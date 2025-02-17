@@ -29,7 +29,8 @@ def root():
     "password": "password",
     "phone_number": "9876543210",
     "country": "India",
-    "state": "Uttar Pradesh"
+    "state": "Uttar Pradesh",
+    "city": "Gorakhpur"
 } """
 @app.post("/signup", response_model=schemas.UserOut)
 async def create_user(user: schemas.UserCreate,  db: Session = Depends(get_db)):
@@ -46,7 +47,8 @@ async def create_user(user: schemas.UserCreate,  db: Session = Depends(get_db)):
         password=hashed_password,
         phone_number=user.phone_number,
         country=user.country,
-        state=user.state
+        state=user.state,
+        city=user.city
     )
     
     db.add(new_user)

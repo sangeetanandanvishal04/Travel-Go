@@ -9,6 +9,7 @@ class UserCreate(BaseModel):
     phone_number: str
     country: str
     state: str
+    city: str
 
 class UserOut(BaseModel):
     email: EmailStr
