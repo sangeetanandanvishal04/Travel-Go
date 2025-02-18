@@ -1,4 +1,4 @@
-from fastapi import FastAPI, status, HTTPException, Depends
+from fastapi import FastAPI, status, HTTPException, Depends, BackgroundTasks
 from .database import get_db, engine
 from sqlalchemy.orm import Session
 from . import schemas, tablesmodel, utils, oAuth2
@@ -33,7 +33,7 @@ def root():
     "city": "Gorakhpur"
 } """
 @app.post("/signup", response_model=schemas.UserOut)
-async def create_user(user: schemas.UserCreate,  db: Session = Depends(get_db)):
+async def create_user(user: schemas.UserCreate, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
     user_found = db.query(tablesmodel.User).filter(tablesmodel.User.email == user.email).first()
 
     if user_found:
@@ -55,6 +55,7 @@ async def create_user(user: schemas.UserCreate,  db: Session = Depends(get_db)):
     db.commit()
     db.refresh(new_user)
     
+    background_tasks.add_task(utils.send_signup_email, user.email)
     return new_user
 
 """ {
