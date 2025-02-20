@@ -75,3 +75,18 @@ async def login_user(user_credentials:schemas.UserLogin ,db: Session = Depends(g
     
     access_token = oAuth2.create_access_token(data={"user_id": user.id})
     return {"access_token": access_token, "token_type": "Bearer"}
+
+#http://127.0.0.1:8000/forgot-password/email@iiita.ac.in
+@app.post("/forgot-password/{email}")
+async def forgot_password(email: str, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
+    user = db.query(tablesmodel.User).filter(tablesmodel.User.email == email).first()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User with this email does not exist")
+
+    otp = utils.generate_otp()
+    db_otp = tablesmodel.OTP(email=email, otp=otp)
+    db.add(db_otp)
+    db.commit()
+    background_tasks.add_task(utils.send_otp_email, user.email, otp)
+
+    return {"message": "OTP sent successfully"}             

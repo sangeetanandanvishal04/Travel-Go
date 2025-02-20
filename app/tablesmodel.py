@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Integer, TIMESTAMP, text
+from sqlalchemy import Column, String, Integer, TIMESTAMP, text, ForeignKey
 from .database import Base
 
 class User(Base):
@@ -12,3 +12,10 @@ class User(Base):
     state = Column(String, nullable=False)
     city = Column(String, nullable=False)
     created_at = Column(TIMESTAMP(timezone=True), nullable=False, server_default=text('now()'))
+
+class OTP(Base):
+    __tablename__ = 'otps'
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    email = Column(String, ForeignKey('users.email'))
+    otp = Column(String, nullable=False)     

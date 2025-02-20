@@ -27,4 +27,18 @@ class Token(BaseModel):
     token_type: str
 
 class TokenData(BaseModel):
-    id: Optional[str] = None     
+    id: Optional[str] = None 
+
+class PasswordChange(BaseModel):
+    old_password: str
+    new_password: str
+    confirm_password: str
+
+class PasswordReset(BaseModel):
+    email: EmailStr
+    new_password: str
+    confirm_password: str   
+
+class OTP(BaseModel):
+    email: EmailStr
+    otp: str 
