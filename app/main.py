@@ -89,4 +89,62 @@ async def forgot_password(email: str, background_tasks: BackgroundTasks, db: Ses
     db.commit()
     background_tasks.add_task(utils.send_otp_email, user.email, otp)
 
-    return {"message": "OTP sent successfully"}             
+    return {"message": "OTP sent successfully"}  
+
+@app.post("/resend-otp/{email}")
+async def resend_otp(email: str, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
+    user = db.query(tablesmodel.User).filter(tablesmodel.User.email == email).first()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User with this email does not exist")
+
+    db.query(tablesmodel.OTP).filter(tablesmodel.OTP.email==email).delete(synchronize_session=False)
+    db.commit()
+
+    otp = utils.generate_otp()
+
+    db_otp = tablesmodel.OTP(email=email, otp=otp)
+    db.add(db_otp)
+    db.commit()
+    background_tasks.add_task(utils.send_otp_email, user.email, otp)
+
+    return {"message": "OTP resend successfully"}
+
+""" {
+    "email": "email@iiita.ac.in",
+    "otp": "5294"
+} """
+@app.post("/otp-verification")
+async def reset_password(otp_data: schemas.OTP, db: Session = Depends(get_db)):
+    user = db.query(tablesmodel.User).filter(tablesmodel.User.email == otp_data.email).first()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Email not found")
+
+    otp_record = db.query(tablesmodel.OTP).filter(tablesmodel.OTP.email == otp_data.email).first()
+    if not otp_record:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="OTP not found")
+    
+    if otp_data.otp != otp_record.otp:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid OTP")
+    
+    db.delete(otp_record)
+    db.commit()
+
+    return {"message": "OTP is correct"}
+
+""" {
+    "email": "email@iiita.ac.in",
+    "new_password": "password",
+    "confirm_password": "password"
+} """
+@app.post("/reset-password")
+async def reset_password(password_data: schemas.PasswordReset, db: Session = Depends(get_db)):
+    user = db.query(tablesmodel.User).filter(tablesmodel.User.email == password_data.email).first()
+
+    if password_data.new_password != password_data.confirm_password:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="New password and confirm password do not match")
+
+    hashed_password = utils.hash(password_data.new_password)
+    user.password = hashed_password
+
+    db.commit()
+    return {"message": "Password reset successfully"}            
