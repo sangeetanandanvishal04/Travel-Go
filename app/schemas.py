@@ -42,3 +42,16 @@ class PasswordReset(BaseModel):
 class OTP(BaseModel):
     email: EmailStr
     otp: str 
+
+class TourGuideCreate(BaseModel):
+    destination: str
+    cost: int
+    description: str
+    how_to_go: str
+    live: str
+    image_url: Optional[str] = None
+
+class TourGuideOut(TourGuideCreate):
+    id: int
+    class Config:
+        from_attributes = True    

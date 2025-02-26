@@ -3,6 +3,8 @@ from .database import get_db, engine
 from sqlalchemy.orm import Session
 from . import schemas, tablesmodel, utils, oAuth2
 from fastapi.middleware.cors import CORSMiddleware
+import os
+from typing import List
 
 app = FastAPI()
 
@@ -18,6 +20,10 @@ app.add_middleware(
 )
 
 tablesmodel.Base.metadata.create_all(bind = engine)
+
+UPLOAD_FOLDER = "uploads/"
+if not os.path.exists(UPLOAD_FOLDER):
+    os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 @app.get("/")
 def root():
@@ -147,4 +153,38 @@ async def reset_password(password_data: schemas.PasswordReset, db: Session = Dep
     user.password = hashed_password
 
     db.commit()
-    return {"message": "Password reset successfully"}            
+    return {"message": "Password reset successfully"}  
+
+@app.post("/add-tour-guide", response_model=schemas.TourGuideOut)
+async def add_tour_guide(data: schemas.TourGuideCreate, current_user: tablesmodel.User = Depends(oAuth2.get_current_user), db: Session = Depends(get_db)):
+    if not current_user:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="UnAuthorized to perform action")
+    
+    image_filename = f"{UPLOAD_FOLDER}{data.image_url}"
+    
+    new_tour_guide = tablesmodel.TourGuide(
+        destination=data.destination,
+        cost=data.cost,
+        description=data.description,
+        how_to_go=data.how_to_go,
+        live=data.live,
+        image_url=image_filename,
+        user_id=current_user.id
+    )
+
+    db.add(new_tour_guide)
+    db.commit()
+    db.refresh(new_tour_guide)
+    return new_tour_guide
+
+@app.get("/tour-guides/search", response_model=List[schemas.TourGuideOut])
+async def search_tour_guides(destination: str, limit: int = 10, current_user: tablesmodel.User = Depends(oAuth2.get_current_user), db: Session = Depends(get_db)):
+    if not current_user:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="UnAuthorized to perform action")
+    
+    tour_guides = db.query(tablesmodel.TourGuide).filter(tablesmodel.TourGuide.destination.ilike(f"%{destination}%")).limit(limit).all()
+    
+    if not tour_guides:
+        raise HTTPException(status_code=404, detail="No matching tour guides found")
+
+    return tour_guides              
